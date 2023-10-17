@@ -1,36 +1,18 @@
 ﻿using System;
 using System.IO;
 using System.Text;
-using System.Timers;
 using Newtonsoft.Json.Linq;
+using System.Configuration;
+using System.Net.Http;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace R3LogTool
 {
-    internal class GetLog
+    internal class Func
     {
-        string logpath = "";
-        Timer timer = new Timer(1000);
-
-        public void TimerStart(string log)
-        {
-            logpath = log;
-
-
-            timer.Elapsed += (sender, e) =>
-            {
-                string line = GetLine(logpath);
-                if (line == "") return;
-                string data = ConvertLog(line);
-            };
-
-            timer.Start();
-        }
-
-        public void TimerStop()
-        {
-            timer.Stop();
-            Console.ReadKey();
-        }
+        private static HttpClient client = new HttpClient();
+        readonly string apiurl = ConfigurationManager.AppSettings["apiurl"];
 
         public string GetLine(String filepath)
         {
@@ -39,7 +21,7 @@ namespace R3LogTool
             var buffer = new byte[BUFFER_SIZE];
             var foundCount = 0;
 
-            using (var fs = new FileStream(filepath, FileMode.Open))
+            using (var fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             {
                 // 検索ブロック位置の繰り返し
                 for (var i = 0; ; i++)
@@ -54,7 +36,6 @@ namespace R3LogTool
                         {
                             log = sr.ReadToEnd();
                         }
-                        Console.ReadKey();
                         return log;
                     }
 
@@ -74,17 +55,15 @@ namespace R3LogTool
                             var sr = new System.IO.StreamReader(fs, Encoding.UTF8);
                             fs.Seek(k + 3, SeekOrigin.Current);
                             string line = sr.ReadLine();
-                            if (line != null &&  line.Contains("XDR3_DBG"))
+                            if (line != null &&  line.Contains("XDR3_DBG_PROGRESS_RESULT"))
                             {
                                 // XrossDiscのログだった場合
-                                Console.ReadKey();
                                 return line;
                             }
                             foundCount++;
                             if (foundCount == lineCountToWrite)
                             {
                                 // 所定の行数が見つかった場合
-                                Console.ReadKey();
                                 return "";
                             }
                         }
@@ -93,15 +72,34 @@ namespace R3LogTool
             }
         }
 
-        public string ConvertLog(string log)
+        public JObject ConvertLog(string log)
         {
             JObject json = JObject.Parse(log);
-            Console.WriteLine(json);
-            foreach (var e in json)
+            return json;
+        }
+
+        public async Task<bool> SendDataAsync(JObject data)
+        {
+            JObject value = new JObject();
+            value["name_a1"] = data["XDR3_DBG_PROGRESS_RESULT"]["name_a1"];
+            value["name_a2"] = data["XDR3_DBG_PROGRESS_RESULT"]["name_a2"];
+            value["name_b1"] = data["XDR3_DBG_PROGRESS_RESULT"]["name_b1"];
+            value["name_b2"] = data["XDR3_DBG_PROGRESS_RESULT"]["name_b2"];
+            value["score_a"] = data["XDR3_DBG_PROGRESS_RESULT"]["score_a"];
+            value["score_b"] = data["XDR3_DBG_PROGRESS_RESULT"]["score_b"];
+            try
             {
-                Console.WriteLine(e);
+                var content = new StringContent(value.ToString(), Encoding.UTF8, "application/json");
+                var res = client.PostAsync("https://script.google.com/macros/s/AKfycbxguZoH0_sBFwYSKDywHZF6j-wmHZ_IaC7yp7YvFGWERLbo-XkIcSOkvvwY1CFIEsU4DA/exec", content);
+                Console.WriteLine("送信しました");
             }
-            return log;
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                Console.WriteLine("送信に失敗しました");
+                return false;
+            }
+            return true;
         }
     }
 }
