@@ -27,7 +27,6 @@ namespace R3LogTool
                 }
                 else
                 {
-                    Console.WriteLine("更新がないので更新をキャンセルしました");
                     return;
                 }
                 JObject data = func.ConvertLog(line);

@@ -87,10 +87,11 @@ namespace R3LogTool
             value["name_b2"] = data["XDR3_DBG_PROGRESS_RESULT"]["name_b2"];
             value["score_a"] = data["XDR3_DBG_PROGRESS_RESULT"]["score_a"];
             value["score_b"] = data["XDR3_DBG_PROGRESS_RESULT"]["score_b"];
+            value["field_name"] = data["XDR3_DBG_PROGRESS_RESULT"]["field_name"];
             try
             {
                 var content = new StringContent(value.ToString(), Encoding.UTF8, "application/json");
-                var res = client.PostAsync("https://script.google.com/macros/s/AKfycbxguZoH0_sBFwYSKDywHZF6j-wmHZ_IaC7yp7YvFGWERLbo-XkIcSOkvvwY1CFIEsU4DA/exec", content);
+                var res = client.PostAsync(apiurl, content);
                 Console.WriteLine("送信しました");
             }
             catch (Exception ex)
